@@ -60,3 +60,30 @@ HTML Form은 `multipart/form-data` 방식으로 입력값과 파일을 함께 �
 
 - 관련 파일 및 메서드: `FileStorageService.java` - `store()`, `load()`
 
+
+## STEP 3. Customizing
+
+### 1. Text 변경
+
+- 수정 파일: `src/main/resources/templates/posts/list.html`
+- 변경 전: 자료 공유 게시판
+- 변경 후: 나의 파일 게시판
+
+게시판 제목을 변경했다.
+
+### 2. Style 변경
+
+- 수정 파일: `src/main/resources/static/css/app.css`
+- 변경 전: 배경색 `#f5f7fb`
+- 변경 후: 배경색 `#eaf4ff`
+
+게시판의 배경색을 연한 하늘색으로 변경했다.
+
+### 3. UI/Data 변경
+
+- 수정 파일: `src/main/resources/templates/posts/detail.html`
+- 변경 전: 파일명과 파일 크기 표시
+- 변경 후: 파일명, 파일 크기, 파일 타입 표시
+
+Thymeleaf의 `file.contentType`을 사용하여
+첨부파일의 종류도 표시하도록 수정했다.
