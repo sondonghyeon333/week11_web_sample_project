@@ -1,36 +1,62 @@
-# Week 11 — Attachment Board (Student Sample)
+## STEP 2. Source Code Exploration & Analysis
 
-Spring Boot + Thymeleaf + JPA + MariaDB: 게시글 CRUD / 다중 첨부파일 업로드 / 다운로드
+## ① Source Code Analysis
 
-## 실행하기
-1. Java 17+ 및 MariaDB 준비, `CREATE DATABASE web11 CHARACTER SET utf8mb4;`
-2. 환경변수 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`를 자신의 MariaDB에 맞게 설정. 기본값은 `jdbc:mariadb://localhost:3306/web11`, `webuser`, `webpass`.
-3. Gradle이 설치된 환경: `gradle bootRun` / IntelliJ: `AttachmentBoardApplication.main()` 실행.
-4. 접속: http://localhost:8080/posts
+Sample Project의 소스코드를 읽고 다음 8개 질문에 대한 답을 README.md에 자신의 말로 작성합니다.
 
-> Gradle Wrapper는 이 ZIP에 포함되어 있지 않습니다. IntelliJ의 Gradle 지원 또는 설치된 Gradle을 사용하세요. `gradle wrapper` 실행 후 생성된 wrapper 파일은 Git에 포함하는 것을 권장합니다.
+### Project Structure & Spring MVC
 
-## 구현된 기능
-- 게시글 목록 / 생성 / 상세 / 수정 / 삭제
-- 게시글 생성 시 여러 파일 선택, UUID 이름으로 `uploads/`에 저장
-- `attachments` 테이블에 메타데이터 저장
-- 첨부파일 다운로드 (`GET /attachments/{id}/download`)
+**1. PostController, PostService, PostRepository는 각각 어떤 역할을 하며, 서로 어떻게 연결되는가?**
 
-## 학생 과제 (TODO)
-1. 코드를 분석하여 업로드/다운로드 요청 흐름 정리
-2. 화면이나 정보 표시 3곳 이상 수정
-3. **이미지 미리보기** 구현: `GET /attachments/{id}/view` + 상세 화면 `<img>` 표시. 이미지(jpg/jpeg/png/gif)만 허용하고 `Content-Type` 정확히 설정
-4. 정상/오류 테스트 후 README 및 Weekly Review 작성
+PostController는 사용자의 요청을 받고 화면을 연결하는 역할을 한다. PostService는 게시글을 저장하거나 수정, 삭제하는 기능을 처리한다. PostRepository는 JPA를 이용해 데이터베이스에 게시글 정보를 저장하고 조회한다. Controller가 Service를 호출하고 Service가 Repository를 사용하는 구조이다.
 
-## 코드 위치
-- `PostController`: 게시글 화면 / Form
-- `AttachmentController`: 다운로드 + 미리보기 TODO
-- `PostService`: JPA CRUD와 파일 저장 연결
-- `FileStorageService`: 파일 검증 / UUID 저장 / 로드
-- `Post`, `Attachment`: 1:N 관계
-- `templates/posts/detail.html`: 미리보기 TODO
+- 관련 파일 및 메서드: `PostController.java` - `create()`, `PostService.java` - `create()`, `PostRepository.java` - `saveAndFlush()`(상속 메서드)
 
-## 주의사항
-- 학습용 프로젝트입니다. 로그인/접근 권한, 업로드 파일의 실제 바이트 검증, 악성 파일 검사, CSRF 보호, 파일 저장과 DB 트랜잭션의 완전한 일관성 보장 등은 구현하지 않았습니다. 인터넷 공개 배포 전에 보강이 필요합니다.
-- `spring.jpa.hibernate.ddl-auto=update`는 학습용 설정이며 운영 DB에는 그대로 사용하지 않습니다.
-- Render 기본 파일 시스템에 저장된 업로드 파일은 재시작/재배포 시 유지되지 않을 수 있습니다. 이번 과제는 **로컬 파일 처리**를 평가합니다.
+**2. 게시글 작성 시 HTML Form의 입력값과 첨부파일은 Controller에 어떻게 전달되는가?**
+
+HTML Form은 `multipart/form-data` 방식으로 입력값과 파일을 함께 보낸다. Controller에서는 `@ModelAttribute`로 제목과 내용을 `PostForm`에 받고, `@RequestParam`으로 첨부파일을 `MultipartFile` 목록에 받는다. 받은 내용과 파일은 Service로 전달된다.
+
+- 관련 파일 및 메서드: `form.html` - 게시글 작성 Form, `PostController.java` - `create()`
+
+### JPA & Entity Relationship
+
+**1. Post와 Attachment Entity는 어떤 관계이며, @ManyToOne과 @OneToMany는 각각 어떤 역할을 하는가?**
+
+게시글 하나에 첨부파일을 여러 개 넣을 수 있어서 일대다 관계이다. `@OneToMany`는 하나의 Post에 여러 Attachment가 연결되는 것을 나타낸다. `@ManyToOne`은 여러 Attachment가 하나의 Post에 속한다는 것을 나타낸다.
+
+- 관련 파일 및 메서드: `Post.java` - `addAttachment()`, `Attachment.java` - `setPost()`
+
+**2. cascade = CascadeType.ALL과 orphanRemoval = true는 어떤 역할을 하며, 실제 디스크에 저장된 파일에도 영향을 주는가?**
+
+`CascadeType.ALL`은 게시글을 저장하거나 삭제할 때 연결된 첨부파일 정보에도 JPA 작업이 적용되게 한다. `orphanRemoval = true`는 게시글과 연결이 끊어진 첨부파일 정보를 DB에서 삭제하도록 한다. 하지만 실제 디스크에 저장된 파일은 자동으로 삭제되지 않기 때문에 따로 삭제해야 한다.
+
+- 관련 파일 및 메서드: `Post.java` - `attachments` 관계 설정, `PostService.java` - `delete()`, `FileStorageService.java` - `deleteIfExists()`
+
+### File Upload
+
+**1. MultipartFile은 무엇이며, 업로드된 파일은 어떤 과정을 거쳐 서버에 저장되는가?**
+
+`MultipartFile`은 사용자가 업로드한 파일을 Spring에서 처리할 때 사용하는 것이다. Controller가 파일을 받으면 Service에서 파일 이름과 형식, 크기를 검사한다. 문제가 없으면 서버의 `uploads` 폴더에 저장하고 파일 정보는 DB에 저장한다.
+
+- 관련 파일 및 메서드: `PostController.java` - `create()`, `PostService.java` - `create()`, `FileStorageService.java` - `store()`
+
+**2. 파일을 원본 이름 대신 UUID 기반 파일명으로 저장하는 이유는 무엇인가?**
+
+서로 다른 사용자가 같은 이름의 파일을 올릴 수도 있기 때문이다. UUID를 사용하면 저장할 때 파일 이름이 겹치는 문제를 줄일 수 있다. 원래 파일 이름은 따로 보관해서 다운로드할 때 사용한다.
+
+- 관련 파일 및 메서드: `FileStorageService.java` - `store()`, `Attachment.java` - `getOriginalFilename()`, `getStoredFilename()`
+
+### File Download & Security
+
+**1. 파일 다운로드 시 Resource, ResponseEntity, Content-Disposition은 각각 어떤 역할을 하는가?**
+
+`Resource`는 서버에 저장된 파일을 읽어 전달할 때 사용한다. `ResponseEntity`는 파일 데이터와 HTTP 응답 정보를 함께 보내는 역할을 한다. `Content-Disposition`은 파일을 다운로드하도록 하고 원래 파일 이름을 지정한다.
+
+- 관련 파일 및 메서드: `AttachmentController.java` - `download()`, `FileStorageService.java` - `load()`
+
+**2. 파일 저장 과정에서 normalize()와 startsWith()를 사용하는 이유는 무엇인가?**
+
+`normalize()`는 파일 경로를 정리하는 역할을 한다. `startsWith()`는 저장하려는 경로가 정해진 업로드 폴더 안에 있는지 확인한다. 이를 통해 다른 폴더에 잘못 접근하는 문제를 막을 수 있다.
+
+- 관련 파일 및 메서드: `FileStorageService.java` - `store()`, `load()`
+
